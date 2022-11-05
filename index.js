@@ -11,7 +11,7 @@ app.use(express.json());
 
 // MONGODB
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.apqupzl.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
@@ -19,14 +19,22 @@ async function run(){
     try{
         const productsCollection = client.db('emajhondb').collection('products');
         app.get('/products', async(req,res)=>{
-            const page = req.query.page;
-            const size = req.query.size;
+            const page = parseInt(req.query.page);
+            const size = parseInt(req.query.size);
             console.log(page,size)
             const query = {};
             const cursor= productsCollection.find(query);
-            const products = await cursor.toArray();
+            const products = await cursor.skip(page * size).limit(size).toArray();
             const count = await productsCollection.estimatedDocumentCount(cursor)
             res.send({count ,products})
+        });
+        app.post('/productsByIds', async(req, res)=>{
+          const ids = req.body;
+          const objectId = ids.map(id=> ObjectId(id))
+          const query = {_id: {$in: objectId}};
+          const cursor = productsCollection.find(query);
+          const products = await cursor.toArray();
+          res.send(products)
         })
     }
     finally{
